@@ -1,25 +1,130 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Repro Research 1"
+author: "KristenDardia"
+date: "April 21, 2017"
+output: html_document
 ---
 
-
-## Loading and preprocessing the data
-
-
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Reproducible Research - Assignment 1
+============================================
+Can get data here: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip
 
 
+Load data
 
-## Imputing missing values
+```{r}
+unzip("./activity.zip")
+activity <- read.csv("./activity.csv")
+summary(activity)
+
+names(activity)
+head(activity)
+pairs(activity)
+
+```
+
+Part 1: What is mean total number of steps taken per day?
+
+Calculate the total number of steps taken per day
+```{r}
+stepsPerDay <- aggregate(steps ~ date, activity, sum, na.rm=TRUE)
+```
+
+Make a histogram
+```{r}
+hist(stepsPerDay$steps)
+```
+
+Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+meanStepsPerDay <- mean(stepsPerDay$steps)
+medianStepsPerDay <- median(stepsPerDay$steps)
+meanStepsPerDay
+medianStepsPerDay
+```
+
+Part 2: What is the average daily activity pattern?
+
+Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) 
+and the average number of steps taken, averaged across all days (y-axis)
+
+```{r}
+stepsPerint<-aggregate(steps~interval, data=activity, mean, na.rm=TRUE)
+plot(steps~interval, data=stepsPerint, type="l")
+```
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+intervalmax <- stepsPerint[which.max(stepsPerint$steps),]$interval
+intervalmax
+```
+
+Step 3: Imputing missing values
+
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r}
+Missings <- sum(is.na(activity$steps))
+Missings
+```
+
+Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. 
+For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+I'll use the mean for the interval
+
+```{r}
+mean<-function(interval){
+    stepsPerint[stepsPerint$interval==interval,]$steps
+}
+```
+
+Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r}
+activity2<-activity
+
+for(i in 1:nrow(activity2)){
+    if(is.na(activity2[i,]$steps)){
+        activity2[i,]$steps <- mean(activity2[i,]$interval)
+    }
+}
+```
+
+Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total 
+number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? 
+What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+```{r}
+totalStepsPerDay2 <- aggregate(steps ~ date, data=activity2, sum)
+hist(totalStepsPerDay2$steps)
 
 
+meanStepsPerDay2 <- mean(totalStepsPerDay2$steps)
+medianStepsPerDay2 <- median(totalStepsPerDay2$steps)
+meanStepsPerDay2
+medianStepsPerDay2
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+The mean didn't change after the replacements of NAs & the median changed a little.  This didnt' have much of an impact.
+
+Part 4: Are there differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable in the dataset with two levels - "weekday" and "weekend" 
+indicating whether a given date is a weekday or weekend day.
+
+```{r}
+activity2$date <- as.Date(strptime(activity2$date, format="%Y-%m-%d"))
+activity2$day <- weekdays(activity2$date)
+
+for (i in 1:nrow(activity2)) {
+    if (activity2[i,]$day %in% c("Saturday","Sunday")) {
+        activity2[i,]$day<-"weekend"
+    }
+    else{
+        activity2[i,]$day<-"weekday"
+    }
+}
+stepsByDay <- aggregate(activity2$steps ~ activity2$interval + activity2$day, activity2, mean)
+```
